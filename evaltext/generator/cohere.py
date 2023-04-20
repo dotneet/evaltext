@@ -18,6 +18,7 @@ class CohereGenerator(TextGenerator):
         }
         self.options = {**initial_options, **(options or {})}
         self.client = cohere.Client(api_key=self.options['apiKey'])
+        self.name = 'cohere' + self.options['model']
 
     def generate(self, prompt: str) -> str:
         response = self.client.generate(

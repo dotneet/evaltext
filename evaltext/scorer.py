@@ -57,7 +57,7 @@ class S:
         if len(lines) > n:
             s = S(lines[n])
             fn(s)
-            self._score += s._score
+            self._score += s.score()
         return self
 
     def part(self, s, fn: Callable[["S"], None]) -> "S":

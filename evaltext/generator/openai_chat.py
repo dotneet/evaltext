@@ -17,6 +17,7 @@ class OpenAiChatGenerator(TextGenerator):
             'temperature': 0,
         }
         self.options = {**initial_options, **options} # type: ignore
+        self.name = 'openai-' + self.options['model']
 
     def generate(self, prompt: str) -> str:
         encoding = tiktoken.encoding_for_model(self.options['model'])
