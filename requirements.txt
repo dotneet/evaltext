@@ -1,0 +1,6 @@
+openai
+cohere
+langchain
+python-dotenv
+tiktoken
+pytest
