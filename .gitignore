@@ -27,3 +27,4 @@ build/
 .env.local
 
 /typings
+/output
