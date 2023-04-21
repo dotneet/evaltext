@@ -1,0 +1,4 @@
+exclude README.md
+include requirements.txt
+include test-requirements.txt
+include setup.cfg
