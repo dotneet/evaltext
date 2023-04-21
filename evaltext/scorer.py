@@ -35,14 +35,14 @@ class S:
         self._add_result(w, result_w)
         return self
 
-    def not_contains(self, search: str, ignore_case: bool = False, w: float = 1) -> "S":
+    def not_contains(self, search: str, ignore_case: bool = False, greater_than: int = 0, w: float = 1) -> "S":
         result_w = 0
         t = self.text
         s = search
         if ignore_case:
             t = self.text.lower()
             s = search.lower()
-        if t.count(s) == 0:
+        if t.count(s) <= greater_than:
             result_w = w
         self._add_result(w, result_w)
         return self
@@ -71,7 +71,7 @@ class S:
     def line(self, n, fn: Callable[["S"], None]) -> "S":
         result_w = 0
         lines = self.text.splitlines()
-        if len(lines) > n:
+        if n < len(lines):
             s = S(lines[n])
             fn(s)
             w = sum(s._weights)

@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from enum import Enum
 from typing import List, Callable
 
@@ -20,20 +21,27 @@ class Runner:
 
     def measure(self, path: str, scorer: Callable[[str], float]) -> List[float]:
         with open(path, "r") as f:
-            prompt_name = os.path.basename(f.name)
+            prompt_name = os.path.basename(f.name).split('.')[0]
             prompt = f.read()
             for gen in self.generators:
-                logging.log(logging.INFO, f"measuring {path} - {gen.name}...")
-                self._measure_with_generator(gen, prompt_name, prompt, scorer)
+                self._measure_with_generator(
+                    generator=gen,
+                    prompt_name=prompt_name,
+                    prompt=prompt,
+                    scorer=scorer
+                )
 
     def _measure_with_generator(self, generator: TextGenerator, scorer: Callable[[str], float], prompt_name: str,
                                 prompt: str, max_retry_count: int = 1) -> bool:
         request_count = 0
         res = None
+        elapsed = 0
         while request_count < max_retry_count + 1:
             request_count += 1
             try:
+                s = time.time()
                 res = generator.generate(prompt)
+                elapsed = time.time() - s
             except Exception as e:
                 logging.log(logging.ERROR, f"request failed: {e}")
 
@@ -42,7 +50,14 @@ class Runner:
 
         score = scorer(res)
         for listener in self.listeners:
-            listener.handle(prompt_name, generator.name, score)
+            listener.handle(
+                prompt=prompt,
+                prompt_name=prompt_name,
+                model_name=generator.name,
+                response=res,
+                elapsed=elapsed,
+                score=score
+            )
 
         return True
 
@@ -59,9 +74,11 @@ class GeneratorType(Enum):
 
 
 def create_runner(types: List[GeneratorType], prompts_dir: str = 'prompts',
-                  output_path: str = 'output/score.csv') -> Runner:
+                  output_path: str = 'output/score.jsonl',
+                  verbose=False,
+                  verbose_detail=False) -> Runner:
     generators: List[TextGenerator] = []
-    listener = ScoreRecorder(output_path)
+    listener = ScoreRecorder(output_path, verbose=verbose, verbose_detail=verbose_detail)
     for t in types:
         if t == GeneratorType.OPENAI_GPT_3_5_TURBO:
             generators.append(OpenAiChatGenerator({'model': 'gpt-3.5-turbo'}))
