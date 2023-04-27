@@ -1,18 +1,6 @@
 {
   "configurations": [
     {
-      "name": "Python: FastAPI",
-      "type": "python",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": ["src.main:app", "--reload"],
-      "jinja": true,
-      "justMyCode": false,
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}/.venv/lib/python3.9/site-packages"
-      }
-    },
-    {
       "name": "Python: Current File",
       "type": "python",
       "request": "launch",

@@ -8,9 +8,9 @@ from . import TextGenerator
 
 
 class OpenAiChatGenerator(TextGenerator):
-    options: Dict[str, str]
+    options: Dict[str, Any]
 
-    def __init__(self, options: Dict[str, str] = {}):
+    def __init__(self, options: Dict[str, Any] = {}):
         initial_options = {
             'model': 'gpt-3.5-turbo',
             'apiKey': os.environ.get('OPENAI_API_KEY', ''),
