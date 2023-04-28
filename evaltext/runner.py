@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 from enum import Enum
 from typing import Callable, List
@@ -18,7 +19,7 @@ class Runner:
     score_listners: List[ScoreListener]
     sampling_count: int
 
-    def __init__(self, generators: List[TextGenerator], 
+    def __init__(self, generators: List[TextGenerator],
                  generation_listeners: List[GenerationListener],
                  score_listeners: List[ScoreListener], sampling_count: int = 3):
         self.generators = generators
@@ -30,13 +31,14 @@ class Runner:
         with open(path, "r") as f:
             prompt_name = os.path.basename(f.name).split('.')[0]
             prompt = f.read()
+            threads = []
             for gen in self.generators:
-                self._measure_with_generator(
-                    generator=gen,
-                    prompt_name=prompt_name,
-                    prompt=prompt,
-                    scorer=scorer
-                )
+                th = threading.Thread(target=self._measure_with_generator, args=(gen, scorer, prompt_name, prompt))
+                th.start()
+                threads.append(th)
+
+            for th in threads:
+                th.join()
 
     def _measure_with_generator(self,
                                 generator: TextGenerator,
@@ -44,8 +46,9 @@ class Runner:
                                 prompt_name: str,
                                 prompt: str,
                                 max_retry_count: int = 1) -> bool:
-        results:List[SamplingResult]= []
-        for _ in range(self.sampling_count):
+        results: List[SamplingResult] = []
+
+        def _measure(count: int):
             request_count = 0
             res = None
             elapsed = 0
@@ -59,7 +62,7 @@ class Runner:
                     logging.log(logging.ERROR, f"request failed: {e}")
 
             if res is None:
-                continue
+                return
 
             score = scorer(res)
 
@@ -75,6 +78,15 @@ class Runner:
 
             results.append(SamplingResult(response=res, score=score, elapsed=elapsed))
 
+        threads = []
+        for cnt in range(self.sampling_count):
+            th = threading.Thread(target=_measure, args=[cnt])
+            th.start()
+            threads.append(th)
+
+        for th in threads:
+            th.join()
+
         for listener in self.score_listeners:
             listener.handle(
                 prompt=prompt,
@@ -87,7 +99,7 @@ class Runner:
 
 
 class GeneratorType(Enum):
-    OPENAI_GPT4 = 'openai-gpt4'
+    OPENAI_GPT_4 = 'openai-gpt4'
     OPENAI_GPT_3_5_TURBO = 'openai-gpt-3.5-turbo'
     OPENAI_GPT_3_5_TURBO_0301 = 'openai-gpt-3.5-turbo-0301'
     OPENAI_DAVINCI_003 = 'openai-davinci-003'
@@ -99,13 +111,15 @@ class GeneratorType(Enum):
 
 def create_runner(types: List[GeneratorType],
                   output_path: str = 'output/score.jsonl',
-                  verbose:bool=False,
+                  verbose: bool = False,
                   temperature: float = 0.1,
                   ) -> Runner:
     generators: List[TextGenerator] = []
     score_listener = ScoreRecorder(output_path, verbose=verbose)
     for t in types:
-        if t == GeneratorType.OPENAI_GPT_3_5_TURBO:
+        if t == GeneratorType.OPENAI_GPT_4:
+            generators.append(OpenAiChatGenerator({'model': 'gpt-4', 'temperature': temperature}))
+        elif t == GeneratorType.OPENAI_GPT_3_5_TURBO:
             generators.append(OpenAiChatGenerator({'model': 'gpt-3.5-turbo', 'temperature': temperature}))
         elif t == GeneratorType.OPENAI_GPT_3_5_TURBO_0301:
             generators.append(OpenAiChatGenerator({'model': 'gpt-3.5-turbo-0301', 'temperature': temperature}))
@@ -124,4 +138,4 @@ def create_runner(types: List[GeneratorType],
         generators=generators,
         generation_listeners=[generation_listener],
         score_listeners=[score_listener]
-        )
+    )
